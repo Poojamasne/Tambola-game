@@ -1,7 +1,7 @@
 const db = require('../db');
 
-class Notification {
-    static async createNotification(message) {
+class notification {
+    static async createnotification(message) {
         const [result] = await db.execute(
             'INSERT INTO notifications (message) VALUES (?)',
             [message]
@@ -9,7 +9,7 @@ class Notification {
         return result.insertId;
     }
 
-    static async getNotifications() {
+    static async getnotifications() {
         const [notifications] = await db.execute(
             'SELECT * FROM notifications ORDER BY created_at DESC'
         );
@@ -17,4 +17,10 @@ class Notification {
     }
 }
 
-module.exports = Notification;
+module.exports = notification;
+
+
+
+
+
+

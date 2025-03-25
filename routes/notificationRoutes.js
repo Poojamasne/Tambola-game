@@ -1,14 +1,14 @@
 const express = require('express');
-
+const { sendnotification, getnotifications } = require('../controllers/notificationController');
 const verifyToken = require('../middleware/auth');
-const { sendNotification, getNotifications } = require('../controllers/notificationController');
+
 
 const router = express.Router();
 
 // Route to send a notification
-router.post('/notifications/send', verifyToken, sendNotification);
+router.post('/notifications/send', verifyToken, sendnotification);
 
 // Route to get all notifications
-router.get('/notifications', verifyToken, getNotifications);
+router.get('/notifications', verifyToken, getnotifications);
 
 module.exports = router;
