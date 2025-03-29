@@ -7,24 +7,12 @@ const { Server } = require('socket.io');
 const path = require('path'); 
 
 const userAuthRoutes = require('./routes/user-auth-routes');
-const bookRoutes = require('./routes/bookRoutes');
-const businessRoutes = require('./routes/businessRoutes');
-const notificationRoutes = require('./routes/notificationRoutes');
-const receiptRoutes = require('./routes/receiptRoutes');
-const paymentRoutes = require('./routes/paymentRoutes');
-const bankRoutes = require('./routes/bankRoutes');
-const headAccountRoutes = require('./routes/headAccountRoutes');
-const partyRoutes = require('./routes/partyRoutes');
-const categoryRoutes = require("./routes/categoryRoutes");
-const categoryBookRoutes = require("./routes/categoryBookRoutes");
-const PartyBookRoutes = require("./routes/PartyBookRoutes");
-const customerRoutes = require("./routes/customerRoutes");
-const ItemRoutes = require("./routes/ItemRoutes");
-const InvoiceRoutes = require("./routes/InvoiceRoutes");
-const ProfileRoutes = require("./routes/ProfileRoutes");
-const FilterRoutes = require('./routes/FilterRoutes');
-const transferRoutes = require("./routes/TransferRoutes");
-
+const profileRoutes = require('./routes/profile-routes');
+const buildTicketRoutes = require('./routes/buildTicket-routes');
+const buyTicketRoutes = require('./routes/buyTicket-routes');
+const gameRoutes = require("./routes/gameRoutes");
+const clubRoutes = require("./routes/clubRoutes");
+// const WinningLogicRoutes = require("./routes/WinningLogic-routes");
 
 const app = express();
 const server = createServer(app);
@@ -58,6 +46,10 @@ io.on('connection', (socket) => {
     });
 });
 
+// Attach `io` to app for real-time updates
+app.set("io", io);
+
+
 // Function to send real-time notifications
 const sendNotification = (notification) => {
     connectedClients.forEach((socket) => {
@@ -67,26 +59,18 @@ const sendNotification = (notification) => {
 
 app.set('sendNotification', sendNotification);
 
+
+
 // API Routes
 app.use('/api', userAuthRoutes);
-app.use('/api', bookRoutes);
-app.use('/api', businessRoutes);
-app.use('/api', notificationRoutes);
-app.use('/api', receiptRoutes);
-app.use('/api', paymentRoutes);
-app.use('/api', bankRoutes);
-app.use('/api', headAccountRoutes);
-app.use('/api', partyRoutes);
-app.use("/api", categoryRoutes);
+app.use('/api', profileRoutes);
+app.use('/api', buildTicketRoutes);
+app.use('/api', buyTicketRoutes);
+app.use("/api/game", gameRoutes);
+app.use("/api", clubRoutes);
 
-app.use("/api", categoryBookRoutes);
-app.use("/api", PartyBookRoutes);
-app.use('/api', customerRoutes);
-app.use('/api', ItemRoutes);
-app.use('/api', InvoiceRoutes); 
-app.use('/api', ProfileRoutes);
-app.use('/api', FilterRoutes);
-app.use("/api", transferRoutes);
+// app.use('/api', WinningLogicRoutes);
+
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {

@@ -1,10 +1,10 @@
 const db = require("../db");
-const bcrypt = require('bcryptjs');
+const upload = require('../middleware/upload');
 
 // 📌 Create a Profile
 exports.createProfile = async (req, res) => {
     try {
-        const { full_name, mobile_number, email } = req.body;
+        const { full_name, mobile_number, email, win_price, remaining_price, buy_ticket } = req.body;
         const image_url = req.file ? "http://localhost:3000/uploads/" + req.file.filename : null;
 
         if (!full_name || !mobile_number || !email) {
@@ -12,8 +12,8 @@ exports.createProfile = async (req, res) => {
         }
 
         const [result] = await db.query(
-            "INSERT INTO profiles (full_name, mobile_number, email, image_url) VALUES (?, ?, ?, ?)",
-            [full_name, mobile_number, email, image_url]
+            "INSERT INTO profiles (full_name, mobile_number, email, image_url, win_price, remaining_price, buy_ticket) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            [full_name, mobile_number, email, image_url, win_price, remaining_price, buy_ticket]
         );
 
         res.status(201).json({ message: "Profile created successfully", profile_id: result.insertId });
@@ -55,7 +55,7 @@ exports.getProfileById = async (req, res) => {
 exports.updateProfile = async (req, res) => {
     try {
         const { id } = req.params;
-        const { full_name, mobile_number, email } = req.body;
+        const { full_name, mobile_number, email, win_price, buy_ticket } = req.body;
         const image_url = req.file ? "http://localhost:3000/uploads/" + req.file.filename : null;
 
         if (!full_name || !mobile_number || !email) {
@@ -63,8 +63,8 @@ exports.updateProfile = async (req, res) => {
         }
 
         const [result] = await db.query(
-            "UPDATE profiles SET full_name=?, mobile_number=?, email=?, image_url=? WHERE id=?",
-            [full_name, mobile_number, email, image_url, id]
+            "UPDATE profiles SET full_name=?, mobile_number=?, email=?, image_url=?, win_price=?, remaining_price=?, buy_ticket=? WHERE id=?",
+            [full_name, mobile_number, email, image_url, win_price, buy_ticket, id]
         );
 
         if (result.affectedRows === 0) {
@@ -78,7 +78,7 @@ exports.updateProfile = async (req, res) => {
     }
 };
 
-// 📌 Delete a Profilenpm install multer
+// 📌 Delete a Profile
 exports.deleteProfile = async (req, res) => {
     try {
         const { id } = req.params;
@@ -95,3 +95,5 @@ exports.deleteProfile = async (req, res) => {
         res.status(500).json({ message: "Server error", error: error.message });
     }
 };
+
+

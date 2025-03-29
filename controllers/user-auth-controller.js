@@ -6,9 +6,9 @@ require('dotenv').config();
 
 exports.signup = async (req, res) => {
     try {
-        const { name, email, phone_number, password, confirmPassword } = req.body;
+        const { firstName, lastName, mobileNumber, emailId, password, confirmPassword } = req.body;
 
-        if (!name || !email || !phone_number || !password || !confirmPassword) {
+        if (!firstName || !lastName || !mobileNumber || !emailId || !password || !confirmPassword) {
             return res.status(400).json({ success: false, message: "All fields are required" });
         }
 
@@ -16,7 +16,10 @@ exports.signup = async (req, res) => {
             return res.status(400).json({ success: false, message: "Passwords do not match" });
         }
 
-        const [existingUser] = await db.query('SELECT * FROM users WHERE phone_number = ?', [phone_number]);
+        // Generate user_name from first_name and last_name
+        const userName = `${firstName.toLowerCase()}.${lastName.toLowerCase()}`;
+
+        const [existingUser] = await db.query('SELECT * FROM users WHERE mobile_number = ? OR email_id = ? OR user_name = ?', [mobileNumber, emailId, userName]);
         if (existingUser.length > 0) {
             return res.status(400).json({ success: false, message: "User already exists" });
         }
@@ -24,8 +27,8 @@ exports.signup = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const [result] = await db.query(
-            'INSERT INTO users (name, email, phone_number, password) VALUES (?, ?, ?, ?)',
-            [name, email, phone_number, hashedPassword]
+            'INSERT INTO users (first_name, last_name, mobile_number, email_id, user_name, password) VALUES (?, ?, ?, ?, ?, ?)',
+            [firstName, lastName, mobileNumber, emailId, userName, hashedPassword]
         );
 
         const userId = result.insertId;  // Get the newly inserted user's ID
@@ -38,16 +41,15 @@ exports.signup = async (req, res) => {
     }
 };
 
-
 exports.login = async (req, res) => {
     try {
-        const { phone_number, password } = req.body;
+        const { userName, password } = req.body;
 
-        if (!phone_number || !password) {
-            return res.status(400).json({ success: false, message: "Phone number and password are required" });
+        if (!userName || !password) {
+            return res.status(400).json({ success: false, message: "User Name and password are required" });
         }
 
-        const [user] = await db.query('SELECT * FROM users WHERE phone_number = ?', [phone_number]);
+        const [user] = await db.query('SELECT * FROM users WHERE user_name = ?', [userName]);
         if (user.length === 0) {
             return res.status(400).json({ success: false, message: "User not found" });
         }
@@ -60,11 +62,12 @@ exports.login = async (req, res) => {
         const token = jwt.sign({ userId: user[0].id }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
         res.json({ success: true, message: "Login successful", token });
-
     } catch (error) {
         res.status(500).json({ success: false, message: "Server error", error: error.message });
     }
 };
+
+
 
 exports.forgotPassword = async (req, res) => {
     try {
@@ -84,40 +87,3 @@ exports.forgotPassword = async (req, res) => {
     }
 };
 
-exports.verifyOTP = async (req, res) => {
-    try {
-        const { sessionId, otp } = req.body;
-        if (!sessionId || !otp) return res.status(400).json({ success: false, message: "Session ID and OTP are required" });
-
-        const isValid = await verifyOTP(sessionId, otp);
-        if (!isValid) return res.status(400).json({ success: false, message: "Invalid OTP" });
-
-        res.json({ success: true, message: "OTP verified successfully" });
-
-    } catch (error) {
-        res.status(500).json({ success: false, message: "Server error", error: error.message });
-    }
-};
-
-exports.resetPassword = async (req, res) => {
-    try {
-        const { phone_number, newPassword, confirmPassword } = req.body;
-
-        if (!phone_number || !newPassword || !confirmPassword) {
-            return res.status(400).json({ success: false, message: "All fields are required" });
-        }
-
-        if (newPassword !== confirmPassword) {
-            return res.status(400).json({ success: false, message: "Passwords do not match" });
-        }
-
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-        await db.query('UPDATE users SET password = ? WHERE phone_number = ?', [hashedPassword, phone_number]);
-
-        res.json({ success: true, message: "Password reset successful" });
-
-    } catch (error) {
-        res.status(500).json({ success: false, message: "Server error", error: error.message });
-    }
-};
