@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { createProfile, getProfiles, getProfileById, updateProfile, deleteProfile } = require('../controllers/profile-controller');
+const { createProfile, getProfiles, getProfileByUserId, updateProfile, deleteProfile } = require('../controllers/profile-controller');
 const upload = require('../middleware/upload');
 const verifyToken = require('../middleware/auth');
 
@@ -11,7 +11,7 @@ router.post('/profile', verifyToken, upload.single('profileImg'), createProfile)
 router.get('/profiles', verifyToken, getProfiles);
 
 // Get profile by ID
-router.get('/profile/:id', verifyToken, getProfileById);
+router.get('/profile-user', verifyToken, getProfileByUserId);
 
 // Update profile
 router.put('/profile/:id', verifyToken, upload.single('profileImg'), updateProfile);

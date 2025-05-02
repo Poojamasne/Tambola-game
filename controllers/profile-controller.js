@@ -16,7 +16,7 @@ exports.createProfile = async (req, res) => {
             [user_id, full_name, mobile_number, email, image_url, win_price, remaining_price, buy_ticket]
         );
 
-        res.status(201).json({ message: "Profile created successfully", profile_id: result.insertId });
+        res.status(201).json({ success: true, message: "Profile created successfully", profile_id: result.insertId });
     } catch (error) {
         console.error("Error:", error);
         res.status(500).json({ message: "Server error", error: error.message });
@@ -35,9 +35,8 @@ exports.getProfiles = async (req, res) => {
 };
 
 // 📌 Get Profile By ID
-exports.getProfileById = async (req, res) => {
+exports.getProfileByUserId = async (req, res) => {
     try {
-        const { id } = req.params;
         const { user_id } = req.query;
 
         if (!user_id) {
@@ -45,12 +44,12 @@ exports.getProfileById = async (req, res) => {
         }
 
         const [profile] = await db.query(
-            "SELECT * FROM profiles WHERE id = ? AND user_id = ?",
-            [id, user_id]
+            "SELECT * FROM profiles WHERE user_id = ?",
+            [user_id]
         );
 
         if (profile.length === 0) {
-            return res.status(404).json({ message: "Profile not found or does not belong to the user" });
+            return res.status(404).json({ message: "Profile not found for this user" });
         }
 
         res.status(200).json(profile[0]);
