@@ -16,10 +16,13 @@ exports.signup = async (req, res) => {
             return res.status(400).json({ success: false, message: "Passwords do not match" });
         }
 
-        // Generate user_name from first_name and last_name
         const userName = `${firstName.toLowerCase()}.${lastName.toLowerCase()}`;
 
-        const [existingUser] = await db.query('SELECT * FROM users WHERE mobile_number = ? OR email_id = ? OR user_name = ?', [mobileNumber, emailId, userName]);
+        const [existingUser] = await db.query(
+            'SELECT * FROM users WHERE mobile_number = ? OR email_id = ? OR user_name = ?',
+            [mobileNumber, emailId, userName]
+        );
+
         if (existingUser.length > 0) {
             return res.status(400).json({ success: false, message: "User already exists" });
         }
@@ -31,15 +34,20 @@ exports.signup = async (req, res) => {
             [firstName, lastName, mobileNumber, emailId, userName, hashedPassword]
         );
 
-        const userId = result.insertId;  // Get the newly inserted user's ID
-
+        const userId = result.insertId;
         const token = jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
-        res.status(201).json({ success: true, message: "User registered successfully", token });
+        res.status(201).json({
+            success: true,
+            message: "User registered successfully",
+            token,
+            userId
+        });
     } catch (error) {
         res.status(500).json({ success: false, message: "Server error", error: error.message });
     }
 };
+
 
 exports.login = async (req, res) => {
     try {
@@ -59,13 +67,20 @@ exports.login = async (req, res) => {
             return res.status(400).json({ success: false, message: "Invalid password" });
         }
 
-        const token = jwt.sign({ userId: user[0].id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        const userId = user[0].id;
+        const token = jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
-        res.json({ success: true, message: "Login successful", token });
+        res.json({
+            success: true,
+            message: "Login successful",
+            token,
+            userId
+        });
     } catch (error) {
         res.status(500).json({ success: false, message: "Server error", error: error.message });
     }
 };
+
 
 
 
