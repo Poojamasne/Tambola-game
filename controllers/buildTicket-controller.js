@@ -192,8 +192,35 @@ async function getTicketById(req, res) {
             connection.release();
         }
     }
+
 }
 
+async function getAllTicketsByGameId(req, res) {
+    let connection;
+    try {
+        const { gameId } = req.params; // Extract gameId from request parameters
+        console.log('Received gameId:', gameId);
+
+        connection = await db.getConnection();
+        const [rows] = await connection.execute(
+            "SELECT * FROM tickets WHERE game_id = ?",
+            [gameId]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({ message: "No tickets found" });
+        }
+
+        return res.status(200).json(rows);
+    } catch (error) {
+        console.error("Error fetching tickets:", error);
+        return res.status(500).json({ message: "Server error" });
+    } finally {
+        if (connection) {
+            connection.release();
+        }
+    }
+}
 
 // async function getGamePlayers(req, res) {
 //     let connection;
@@ -337,4 +364,6 @@ async function getGamePlayers(req, res) {
     }
 }
 
-module.exports = { buildTickets, getTicketById, createGame , getGamePlayers };
+
+
+module.exports = { buildTickets, getTicketById, createGame , getGamePlayers , getAllTicketsByGameId};
