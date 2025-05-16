@@ -4,7 +4,6 @@ const gameController = require('../controllers/gameController');
 const upload = require('../middleware/upload');
 const verifyToken = require('../middleware/auth');
 
-// Ticket operations
 router.post('/generate-tickets',gameController.generateTicket);
 
 // Game operations
@@ -13,7 +12,6 @@ router.get('/winners', verifyToken, gameController.checkWinners);
 router.post('/start', verifyToken, gameController.startGame);
 router.post('/reset', verifyToken, gameController.resetGame);
 router.get('/state', verifyToken, gameController.getGameState);
-
 
 // Live results
 router.get('/results/live', gameController.getLiveResults); 

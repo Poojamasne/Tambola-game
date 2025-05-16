@@ -1,32 +1,56 @@
 const db = require('../db');
 const upload = require('../middleware/upload');
 
-// POST API: Buy Ticket
+
+
+// Function to convert ISO string to MySQL datetime format
+function convertToMySQLDateTime(isoString) {
+    const date = new Date(isoString);
+    return date.toISOString().replace('T', ' ').substring(0, 19);
+}
+
+// Function to get the current date in YYYY-MM-DD format
+function getCurrentDate() {
+    const date = new Date();
+    return date.toISOString().split('T')[0];
+}
+
+// Function to generate a custom game_id in the format Game ID:P167532
+function generateGameId() {
+    const prefix = 'P';
+    const gameNumber = Math.floor(100000 + Math.random() * 900000); // 6-digit number
+    const gameId = `${prefix}${gameNumber}`;
+    return { gameId, gameNumber };
+}
 
 exports.buyTicket = async (req, res) => {
     let connection;
 
     try {
-        const { userId, timeSlotId, totalTickets, ticketPrice, totalAmount, prize, jackpotPrice, bookingDate, isAutomatic } = req.body;
+        // Destructure the request body to extract necessary fields
+        const { userId, timeSlot, totalTickets, ticketPrice, totalAmount, prize, jackpotPrice, bookingDate, isAutomatic, isPremium, playerId } = req.body;
         connection = await db.getConnection();
 
         // Check if user exists and has enough balance
         const [userRows] = await connection.execute("SELECT balance FROM users WHERE id = ?", [userId]);
 
         if (userRows.length === 0) {
-            connection.release();  // ✅ Use release() instead of end()
+            connection.release();
             return res.status(404).json({ status: "error", message: "User not found" });
         }
 
         let userBalance = userRows[0].balance;
 
         if (userBalance < totalAmount) {
-            connection.release();  // ✅ Use release()
+            connection.release();
             return res.status(400).json({ status: "error", message: "Insufficient balance" });
         }
 
-        // ✅ Convert `bookingDate` to MySQL DATETIME format
-        const formattedBookingDate = new Date(bookingDate).toISOString().slice(0, 19).replace("T", " ");
+        // Convert `bookingDate` to MySQL DATETIME format
+        const formattedBookingDate = convertToMySQLDateTime(bookingDate);
+
+        // Generate a custom game_id
+        const { gameId } = generateGameId();
 
         // Deduct ticket price from user balance
         const newBalance = userBalance - totalAmount;
@@ -34,112 +58,77 @@ exports.buyTicket = async (req, res) => {
 
         // Insert ticket booking record
         const [result] = await connection.execute(
-            "INSERT INTO buyTicket (user_id, time_slot_id, total_tickets, ticket_price, total_amount, prize, jackpot_price, booking_date, is_automatic) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            [userId, timeSlotId, totalTickets, ticketPrice, totalAmount, prize, jackpotPrice, formattedBookingDate, isAutomatic]
+            "INSERT INTO buyticket (user_id, time_slot, total_tickets, ticket_price, total_amount, prize, jackpot_price, booking_date, is_automatic, is_premium, player_id, game_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [userId, timeSlot, totalTickets, ticketPrice, totalAmount, prize, jackpotPrice, formattedBookingDate, isAutomatic, isPremium, playerId, gameId]
         );
 
-        connection.release();  // ✅ Use release()
+        connection.release();
 
+        // Send success response with ticket details, game_id, and updated user balance
         res.status(201).json({
             status: "success",
             message: "Ticket booked successfully",
-            ticketDetails: { userId, timeSlotId, totalTickets, ticketPrice, totalAmount, prize, jackpotPrice, bookingDate: formattedBookingDate, isAutomatic },
+            ticketDetails: { 
+                userId, 
+                timeSlot,    
+                totalTickets, 
+                ticketPrice, 
+                totalAmount, 
+                prize, 
+                jackpotPrice, 
+                bookingDate: formattedBookingDate, 
+                isAutomatic,
+                isPremium,
+                playerId,
+                gameId // Include game_id in the response
+            },
             userBalance: newBalance
         });
 
     } catch (error) {
-        if (connection) connection.release();  // ✅ Ensure release() is called on error
+        if (connection) connection.release();
         console.error("Error:", error);
         res.status(500).json({ status: "error", message: "Server error", error: error.message });
     }
 };
-
-
 
 exports.getAllTickets = async (req, res) => {
+    let connection;
+
     try {
-        const connection = await db.getConnection();
-        const [tickets] = await connection.execute("SELECT * FROM buyTicket");
-        
-        connection.release(); // ✅ Use release()
+        connection = await db.getConnection();
+        const [rows] = await connection.execute("SELECT * FROM buyticket");
+        connection.release();
 
-        res.status(200).json({ status: "success", tickets });
+        if (rows.length === 0) {
+            return res.status(404).json({ status: "error", message: "No tickets found" });
+        }
 
+        res.status(200).json({ status: "success", tickets: rows });
     } catch (error) {
+        if (connection) connection.release();
         console.error("Error:", error);
         res.status(500).json({ status: "error", message: "Server error", error: error.message });
     }
-};
+}
 
-
-// GET API: Fetch Ticket by ID
 exports.getTicketById = async (req, res) => {
-    let connection; 
+    let connection;
+
     try {
-        const { id } = req.params;
+        const ticketId = req.params.id;
         connection = await db.getConnection();
+        const [rows] = await connection.execute("SELECT * FROM buyticket WHERE id = ?", [ticketId]);
+        connection.release();
 
-        // Fetch ticket details from buyTicket table
-        const [tickets] = await connection.execute(
-            "SELECT * FROM buyTicket WHERE id = ?", 
-            [id]
-        );
-
-        if (tickets.length === 0) {
+        if (rows.length === 0) {
             return res.status(404).json({ status: "error", message: "Ticket not found" });
         }
 
-        // Fetch associated ticket details from tickets table
-        const [ticketDetails] = await connection.execute(
-            "SELECT id, playerName, emailId, ticket FROM tickets WHERE buy_ticket_id = ?", 
-            [id]
-        );
-
-        // ✅ Handle JSON parsing errors
-        const purchasedTickets = ticketDetails.map(ticket => {
-            try {
-                return {
-                    id: ticket.id,
-                    playerName: ticket.playerName,
-                    emailId: ticket.emailId,
-                    ticket: JSON.parse(ticket.ticket)  // ✅ Ensure JSON is parsed correctly
-                };
-            } catch (err) {
-                console.error("Invalid JSON in ticket:", ticket.ticket);
-                return {
-                    id: ticket.id,
-                    playerName: ticket.playerName,
-                    emailId: ticket.emailId,
-                    ticket: ticket.ticket  // Return raw data if JSON parsing fails
-                };
-            }
-        });
-
-        res.status(200).json({
-            status: "success",
-            ticket: {
-                id: tickets[0].id,
-                userId: tickets[0].user_id,
-                timeSlotId: tickets[0].time_slot_id,
-                totalTickets: tickets[0].total_tickets,
-                ticketPrice: tickets[0].ticket_price,
-                totalAmount: tickets[0].total_amount,
-                prize: tickets[0].prize,
-                jackpotPrice: tickets[0].jackpot_price,
-                bookingDate: tickets[0].booking_date,
-                isAutomatic: tickets[0].is_automatic,
-                createdAt: tickets[0].created_at,
-                purchasedTickets
-            }
-        });
-
+        res.status(200).json({ status: "success", ticket: rows[0] });
     } catch (error) {
+        if (connection) connection.release();
         console.error("Error:", error);
         res.status(500).json({ status: "error", message: "Server error", error: error.message });
-    } finally {
-        if (connection) await connection.release();
     }
 };
-
-
-
